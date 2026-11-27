@@ -72,13 +72,18 @@ pi                                                # authenticate once, configure
 ### Order matters: install where the work is delegated *from*
 
 A delegated subagent inherits its toolset list from the profile that delegated, not from the profile it runs
-as (`tools/delegate_tool.py:269` computes the list before the child enters the target profile's scope). So the
-plugin must be installed in the profile you delegate *from* — normally `default`, since that is where you work.
-Install there first, then clone: a clone copies installed plugins and `platform_toolsets`, so `coder` starts
-with the plugin already in place, and narrowing its toolset list afterwards keeps `pi` and drops the rest.
+as (`tools/delegate_tool.py:269` computes the list before the child enters the target profile's scope). Verified
+end to end: with the plugin enabled in the parent and the target profile's own list stripped to `file`, the
+child still found and called `pi`; with the plugin disabled in the parent, the child had no `pi` at all.
 
-Installing only into `coder` works for kanban (that worker is a separate `hermes -p coder` process with its own
-config) but leaves a delegated subagent without the `pi` tool.
+So the plugin must be enabled in the profile you delegate *from* — normally `default`. The target profile's own
+toolset list matters only where that profile runs by itself: a kanban worker (`hermes -p coder`) or a profile
+opened by hand.
+
+Narrow toolsets through `hermes tools`, never by writing `platform_toolsets` by hand. A plugin toolset is on by
+default: it survives a saved list unless it is recorded in `known_plugin_toolsets.<platform>` and missing from
+that list, and only `hermes tools` (the checklist, or `tools enable`/`tools disable`) writes that record.
+Editing `platform_toolsets.cli` alone leaves `pi` enabled in every profile.
 
 ### Ask Hermes to set it up
 
@@ -91,13 +96,16 @@ Set up the hexpi coding subagent on this machine.
    hermes plugins install https://github.com/vvoxa/hexpi#plugin
 2. Create a profile named coder as a clone of this one, so it inherits providers, memory, skills and the plugin:
    hermes profile create coder --clone --no-alias
-3. Narrow the clone to two toolsets — the plugin's `pi` and plain file reading:
-   hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
+3. Narrow the clone's own tools (this is what a kanban worker or a hand-opened profile sees; a delegated child
+   takes its tools from the parent instead):
+   hermes -p coder tools disable web
+   hermes -p coder tools disable terminal
+   hermes -p coder tools list
 4. Give one pi run room to finish (the executor's per-tool deadline is 420s by default), in both profiles:
    hermes -p coder config set timeouts.tools.sequential_call 3600
 5. Route delegation to that profile: install the official advanced-delegation plugin and switch the backend.
 6. Check it and report back verbatim: hermes plugins list, and the output of
-   hermes -p coder config get platform_toolsets
+   hermes -p coder tools list
 
 Do not restart the gateway. Report what each command printed, including errors.
 ```
@@ -107,7 +115,8 @@ Without the prompt, the same steps by hand:
 ```bash
 hermes plugins install https://github.com/vvoxa/hexpi#plugin
 hermes profile create coder --clone --no-alias
-hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
+hermes -p coder tools disable web
+hermes -p coder tools disable terminal
 hermes -p coder config set timeouts.tools.sequential_call 3600
 hermes plugins install advanced-delegation
 hermes config set delegation.backend profile_routes
@@ -188,10 +197,10 @@ Milestones are ordered; each one is shippable on its own.
 | # | Milestone | Ships | Open question |
 |---|---|---|---|
 | 0 | Repository | README, `AGENTS.md`, MIT, this roadmap | — |
-| 1 | Plugin skeleton ✅ | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Does a plugin toolset survive `platform_toolsets` narrowing in a profile clone? |
+| 1 | Plugin skeleton ✅ | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Answered: the toolset name resolves to the tool `pi`, and `platform_toolsets` alone never removes it — a plugin toolset stays on until `hermes tools` records it in `known_plugin_toolsets` and leaves it out |
 | 2 | The `pi` tool end to end ✅ | `pi --mode rpc --no-session` in the working directory: one prompt in, final text out, error paths named | Answered: a rejected prompt comes back as `success: false` with the provider's message, which becomes the tool's error text |
 | 3 | RPC hardened ✅ | Framing by LF only, id correlation, `extension_ui_request` answered `cancelled`, abort on interrupt, stderr tail in errors, process tree killed on timeout | Open: where does Pi's output get too large to return, and what is a useful truncation? |
-| 4 | Profile wiring | The documented recipe: cloned profile, `advanced-delegation` profile route, `platform_toolsets` narrowed to the `pi` toolset, kanban assignee | Child toolsets come from the calling profile, not the target profile — does the tool still reach a delegated child? |
+| 4 | Profile wiring (delegation half ✅) | The documented recipe: cloned profile, `advanced-delegation` profile route, toolsets narrowed through `hermes tools`, kanban assignee | Answered: a child takes the calling profile's list — verified live, `pi` reached the child with the target profile stripped to `file`, and vanished once the plugin was disabled in the parent. Open: the kanban worker runs on its own config, untested |
 | 5 | Integrations | Hermes skills and memory reachable from Pi; a separate Pi home if one is needed by then | MCP server, injected context document, or a pre-run hook — which one survives Pi's session model? |
 
 Research notes for these questions and the implementation plans live in the vault, not in this repository.
