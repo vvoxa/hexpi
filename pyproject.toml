@@ -45,6 +45,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "ANN", "ARG", "PLR2004"]
+"hooks/**" = ["T201"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"

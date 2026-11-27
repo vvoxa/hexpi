@@ -115,9 +115,9 @@ Without the prompt, the same steps by hand:
 ```bash
 hermes plugins install https://github.com/vvoxa/hexpi#plugin
 hermes profile create coder --clone --no-alias
+hermes -p coder config set timeouts.tools.sequential_call 3600
 hermes -p coder tools disable web
 hermes -p coder tools disable terminal
-hermes -p coder config set timeouts.tools.sequential_call 3600
 hermes plugins install advanced-delegation
 hermes config set delegation.backend profile_routes
 ```
@@ -125,6 +125,33 @@ hermes config set delegation.backend profile_routes
 Then list `coder` under `profile_routes` with a one-line description (`hermes delegation config`, or the
 Subagents section of the desktop settings). For kanban, the card's assignee is `coder` — worktree isolation is
 the dispatcher's job and needs nothing from this plugin.
+
+### Make the review lane mandatory
+
+A worker decides how its card ends, and `kanban_complete` ends it without a review. Nothing in the board
+configuration forbids that, so the gate is a `pre_tool_call` hook, wired once in the **implementer** profile
+(`coder`), never in the reviewing one:
+
+```bash
+hermes -p coder config set hooks.pre_tool_call '[{"matcher":"kanban_(complete|request_review)","command":"<repo>/hooks/kanban-review-gate.py","timeout":10}]'
+hermes hooks test pre_tool_call --for-tool kanban_complete      # expect action: block
+hermes hooks test pre_tool_call --for-tool kanban_request_review  # expect action: modify, reviewer=default
+```
+
+The hook does two things. It blocks `kanban_complete` with a message that names the way out, so a card cannot
+be closed by the agent that wrote it. And when `kanban_request_review` arrives without a `reviewer`, it fills
+in `default` — which reassigns the card, so the review lane spawns the profile that can actually read the diff,
+run the tests and hold the memory. `kanban_block` and every other call pass through untouched.
+
+**Wire it in exactly one profile.** A gate in the reviewing profile blocks the reviewer's own
+`kanban_complete` too, and the card can then only escape through `kanban_block` — which is what a probe run
+did before this was pinned down.
+
+The gate is checked live rather than assumed: the block refusal reached a real worker's `kanban_complete`, and
+`request_review` without a reviewer left `{"implementer": "default", "reviewer": "default"}` on the event and
+`review` as the card's status. A hook needs consent before it fires — approve it at the terminal once, set
+`hooks_auto_accept: true`, or run the gateway with `--accept-hooks`; an unapproved hook is skipped with a
+warning in the log, which is the one way this gate silently does nothing.
 
 ## Configuration
 
@@ -212,6 +239,7 @@ plugin/plugin.yaml            the manifest: what this plugin provides
 plugin/__init__.py            the plugin Hermes loads: register(ctx) and nothing else
 plugin/pi_tool.py             the tool schema and its handler
 plugin/pi_rpc.py              the RPC client: framing, ids, completion, cancellation
+hooks/kanban-review-gate.py   the board gate: no self-approval, and the review lane is a named profile
 tests/                        the specification: few tests, hermetic, named as claims
 docs/architecture.md          components, the composition root, and the rules a test enforces
 docs/testing.md               how we test, what we refuse to test
