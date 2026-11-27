@@ -1,0 +1,32 @@
+[core]
+	autocrlf = false
+	whitespace = trailing-space,space-before-tab
+
+[merge]
+	conflictstyle = zdiff3
+
+[diff]
+	algorithm = histogram
+	colorMoved = zebra
+
+[fetch]
+	prune = true
+
+[pull]
+	ff = only
+
+[rebase]
+	autostash = true
+	updateRefs = true
+
+[rerere]
+	enabled = true
+
+[push]
+	autoSetupRemote = true
+
+[commit]
+	verbose = true
+
+[tag]
+	sort = version:refname

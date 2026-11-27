@@ -185,8 +185,11 @@ Research notes for these questions and the implementation plans live in the vaul
 ## Development
 
 ```
-plugin/hexpi/            the plugin: plugin.yaml, __init__.py with register(ctx), the pi tool, tests
+plugin/hexpi/            the plugin: plugin.yaml, __init__.py with register(ctx), the pi tool
+tests/                   plain-assert self-check, no framework, no network
 docs/releases.md         how a version, a changelog and a tag come out of commit messages
+pyproject.toml           ruff: the whole style guide, nothing to discuss in review
+.gitconfig .editorconfig settings both the repo and the editor enforce
 ```
 
 The plugin is Python — the standard library only — because the Hermes plugin API is Python and a second
@@ -194,9 +197,15 @@ runtime would buy nothing. Tests are plain asserts run by a script, with no fram
 a test that needs a real `pi` binary or a real provider is not a test.
 
 ```bash
-git clone <repo> hexpi && cd hexpi
-python3 tests/selfcheck.py        # once milestone 1 lands
+git clone https://github.com/vvoxa/hexpi && cd hexpi
+git config --local include.path ../.gitconfig   # the repo's shared git settings
+pip install ruff
+ruff check . && ruff format --check .          # what CI runs
+python3 tests/selfcheck.py                      # once milestone 1 lands
 ```
+
+Ruff is the style authority; do not argue with it in review, and do not silence it — a `# noqa` needs a reason
+in the same line. Why these rules and not others: `docs/style.md`.
 
 ## Releases
 

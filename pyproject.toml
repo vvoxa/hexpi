@@ -1,0 +1,61 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["plugin"]
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import order
+    "N",    # naming
+    "UP",   # pyupgrade: modern syntax for the declared floor
+    "B",    # bugbear: mutable defaults, loop-variable closures, silent bugs
+    "S",    # bandit: subprocess, temp files, weak crypto
+    "A",    # builtin shadowing
+    "C4",   # comprehensions
+    "PTH",  # pathlib over os.path
+    "SIM",  # simplifiable code
+    "RET",  # needless returns
+    "ARG",  # unused arguments
+    "TRY",  # exception antipatterns: bare raise, wide except
+    "RUF",  # ruff's own: ambiguous names, unused noqa
+    "ANN",  # every public signature annotated
+    "T20",  # no print(): stdout belongs to the protocol
+    "DTZ",  # no naive datetimes
+    "TID",  # tidy imports
+    "FBT",  # no boolean positional traps
+    "PL",   # pylint subset
+    "G",    # no f-strings in logging
+    "PIE",  # misc
+]
+ignore = [
+    "ANN401",  # Any is honest at the plugin boundary
+    "PLR0913", # a tool schema may have several parameters
+    "PLR2004", # protocol constants compared literally are clearer
+    "S603",    # subprocess with an argv list we build ourselves
+    "S607",    # `pi` comes from PATH on purpose
+    "TRY003",  # long messages inline, not custom exception classes
+    "EM101",   # string literal in raise is fine
+    "EM102",
+    "PLW2901", # loop variable deliberately rebound while parsing
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN", "ARG", "PLR2004"]  # asserts are the test
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.pylint]
+max-args = 12
+max-branches = 15
+max-statements = 60
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true

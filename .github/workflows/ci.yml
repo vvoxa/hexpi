@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: self-check
+        run: |
+          if [ -f tests/selfcheck.py ]; then
+            python3 tests/selfcheck.py
+          else
+            echo "no self-check yet (milestone 1 adds it)"
+          fi
