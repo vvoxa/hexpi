@@ -21,23 +21,22 @@ coding subagent of Hermes.
 
 ## Overview
 
-Hermes spawns subagents through `delegate_task`. Those subagents are Hermes agents: their tools are Hermes
-tools, their file edits go through Hermes' file operations, and their coding ability is whatever the model
-brings. Pi is a coding agent built for exactly that job — it reads, edits, greps, runs commands and drives its
-own loops.
+Hermes spawns subagents through `delegate_task`, and a subagent can be a Hermes profile. A profile has its own
+model, credentials, skills and instructions — which makes it the right place to put a coding agent.
 
-`hexpi` puts the two together: a subagent that Hermes sees and manages like any other, but whose work is done
-by Pi. The plugin registers a delegation backend and a profile-shaped subagent description, so Pi shows up in
-the Hermes settings as one selectable coding subagent — in the desktop app and in the CLI alike.
+`hexpi` is the thin half of that arrangement: a Hermes plugin installed into a profile, giving it **one tool**,
+`pi`, which runs the Pi coding agent in the current working directory and returns what Pi did. The profile is
+the subagent; Pi is how it writes code. Any profile with `hexpi` in it — whether reached through delegation,
+through the kanban dispatcher, or opened directly — codes with Pi.
 
 Everything Pi needs is configured from Hermes: provider, model, reasoning effort, codemode, the Pi home
 directory. Pi itself is never configured by hand, and the user's own `~/.pi` is never touched.
 
 ## Features
 
-- **Pi as a native subagent.** The delegate task is handled by Pi, not by another Hermes agent.
-- **Profiled, like a real subagent.** `hexpi` carries a description ("coding"), its own model/provider/effort
-  route and its own home directory — an ephemeral profile: created on the fly, no state kept between tasks.
+- **One tool, `pi`.** The profile gets a single capability; the coding is Pi's, not the profile model's.
+- **Works wherever a profile works.** Delegation by profile route, a kanban assignee, or a profile opened by
+  hand — the same tool, the same isolated Pi home.
 - **Deep integration with Hermes.** Pi gets the Hermes skills and the Hermes memory providers, so it works
   with the same knowledge the rest of the fleet does instead of starting from zero.
 - **Forced codemode.** One switch turns on Pi's `codemode` tool (JavaScript that calls the other tools) for
@@ -51,20 +50,24 @@ directory. Pi itself is never configured by hand, and the user's own `~/.pi` is 
 
 ## Requirements
 
-- Hermes Agent 0.23.0 or newer (plugin and delegation-backend APIs)
+- Hermes Agent 0.23.0 or newer (plugin API)
 - Python 3.11+ (the Hermes runtime; the plugin uses the standard library only)
 - Network access on first run if Pi has to be installed
 - A provider credential for the model Pi will use — held by Hermes, passed to Pi per run
 
 ## Installation
 
-Not yet installable — the plugin skeleton lands in milestone 1. Target flow:
+Not yet installable — the plugin skeleton lands in milestone 1. Target flow, on the profile that should
+code with Pi:
 
 ```bash
-hermes plugins install <owner>/hexpi
+hermes -p <profile> plugins install <owner>/hexpi
 hermes plugins validate hexpi
-hermes config set delegation.backend hexpi
+hermes config set platform_toolsets.cli '[hexpi, file, skills]'
 ```
+
+And, once, on the profile doing the delegating: the official `advanced-delegation` plugin, mode
+`profile_routes`, listing that profile. For kanban, the card's assignee is the profile name.
 
 ## Configuration
 
@@ -73,7 +76,7 @@ Settings live under `plugins.entries.hexpi.settings` — the same tree the deskt
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `description` | str | `coding` | What the subagent is for, as the settings pane shows it |
+| `description` | str | `coding` | What this profile's `pi` tool is for, as the settings pane shows it |
 | `home` | str | `<HERMES_HOME>/hexpi/pi` | Pi's home for `hexpi` (`PI_CODING_AGENT_DIR`). Never `~/.pi` |
 | `pi_bin` | str | *(from `PATH`)* | Explicit Pi executable |
 | `auto_install` | bool | `true` | Install Pi when it is missing |
@@ -96,25 +99,25 @@ hermes config get plugins.entries.hexpi
 Target flow, once milestone 2 lands:
 
 ```
-> delegate this refactor to hexpi
+> delegate this refactor to the coder profile
 ```
 
-Hermes routes the delegate task to the `hexpi` backend, starts Pi in RPC mode inside the project directory,
-streams Pi's progress back as subagent progress, and returns Pi's result — summary plus the diff it left in
-the tree.
+Hermes runs the delegate task as that profile; the profile calls its one tool, `pi`, which starts Pi in RPC
+mode inside the working directory, streams its work into the tool result, and returns what Pi did — summary
+plus the diff it left in the tree. The same happens when a kanban card names the profile as its assignee.
 
 ## How it works
 
-Four moving parts, each one a research question until it is proven:
+Four moving parts:
 
-1. **The route.** A delegation provider answers "which way does this task go" and returns the `hexpi` route, so
-   the settings pane offers `hexpi` next to the built-in modes.
-2. **The child.** Pi is started as a long-lived subprocess in `--mode rpc` (JSONL on stdin/stdout): one prompt
-   in, session events out, `agent_settled` as the completion signal.
-3. **The home.** `PI_CODING_AGENT_DIR` points at the plugin's own directory, so `hexpi` has its own
+1. **The profile.** The subagent is a normal Hermes profile — its model, credentials, skills and instructions.
+   Reachable by delegation (profile route), by kanban assignee, or by hand.
+2. **The tool.** `hexpi` registers exactly one tool, `pi`, in its own toolset. The profile's model decides to
+   call it; Pi decides how to code.
+3. **The process.** Pi runs as a subprocess in `--mode rpc` (JSONL on stdin/stdout): one prompt in, session
+   events out, `agent_settled` as the completion signal.
+4. **The home.** `PI_CODING_AGENT_DIR` points at the plugin's own directory, so `hexpi` has its own
    `settings.json`, sessions and packages while `~/.pi` keeps the user's.
-4. **The knowledge.** Hermes skills are directories of `SKILL.md` — the same shape Pi discovers under
-   `~/.agents/skills/`; Hermes memory reaches Pi through the same seam, exact shape to be decided.
 
 Deliberately **not** in scope: vendoring or forking Pi, writing into the user's `~/.pi`, running Pi on another
 machine (that is a transport problem, not a plugin's), and re-implementing ACP.
@@ -127,7 +130,8 @@ machine (that is a transport problem, not a plugin's), and re-implementing ACP.
 | Pi runs with its **own** `PI_CODING_AGENT_DIR` | the user's `~/.pi` stays theirs; sessions and packages do not mix |
 | Settings reach Pi as **arguments and files in that home** | no `pi auth login`, no editing Pi's settings by hand |
 | The plugin is **Python, standard library only** | the Hermes plugin API is Python; a second runtime buys nothing |
-| No core patch | if the task needs Pi to *be* the worker and no plugin seam expresses that, that is a decision to revisit, not to fork around |
+| No core patch | the subagent is a stock Hermes profile; hexpi only adds a tool, so nothing in Hermes has to change |
+| No delegation backend in this plugin | routing a subagent to a profile is `advanced-delegation`'s `profile_routes` mode; duplicating it would put two owners on one decision |
 
 Cancel is `abort` and waits for the session to go idle; `clear_queue` returns the messages an abort displaced.
 
@@ -138,10 +142,10 @@ Milestones are ordered; each one is shippable on its own.
 | # | Milestone | Ships | Open question |
 |---|---|---|---|
 | 0 | Repository | README, `AGENTS.md`, MIT, this roadmap | — |
-| 1 | Plugin skeleton | `plugin.yaml`, `register(ctx)`, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Which manifest capabilities does the delegation seam need to declare? |
-| 2 | Pi runtime | Resolve `pi` from `PATH` or install it; isolated `PI_CODING_AGENT_DIR`; `hermes hexpi doctor` reporting version, home, provider | Which install path is authoritative — the shell installer or npm? Both must be supported; which one is default? |
-| 3 | Pi as the subagent | RPC subprocess: prompt → events → result; cancellation, timeouts, exit codes, the diff left in the tree | Decided: the transport is Pi's RPC mode. Still open: which Hermes seam hands Pi the task — a delegation backend returns a route only and cannot start a process (see the vault note). |
-| 4 | Profile description | `hexpi` appears as its own subagent with a coding description and its own route in desktop settings and CLI; ephemeral, no state kept | How much of the route vocabulary (model, provider, effort) can be passed through without Hermes overriding it? |
+| 1 | Plugin skeleton | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Does a plugin toolset survive `platform_toolsets` narrowing in a profile clone? |
+| 2 | Pi runtime | Resolve `pi` from `PATH` or install it; isolated `PI_CODING_AGENT_DIR`; `hermes -p <profile> hexpi doctor` reporting version, home, provider | Which install path is authoritative — the shell installer or npm? Both must be supported; which one is default? |
+| 3 | The `pi` tool | RPC subprocess: prompt → events → result; cancellation, timeouts, exit codes, the diff left in the tree | Can a tool call report progress while Pi works, and does a long run survive the tool timeout? |
+| 4 | Profile wiring | The documented recipe: cloned profile, `advanced-delegation` profile route, `platform_toolsets` narrowed to the `pi` toolset, kanban assignee | Child toolsets come from the calling profile, not the target profile — does the tool still reach a delegated child? |
 | 5 | Model and effort | `provider`, `model`, `thinking` mapped onto `--provider`, `--model`, `--thinking`; credentials handed to Pi per run | Where do Pi's env-var credentials come from — Hermes' provider config, `.env`, or a per-run injection? |
 | 6 | Forced codemode | `codemode: true` → `--tools +codemode` on every run, independently of Pi's own `settings.json` | Do `--tools` and the isolated `defaultTools` agree, or does one silently win? |
 | 7 | Hermes skills | Hermes skills visible to Pi (symlink or configured skill location); only enabled skills exposed | Pi's skill frontmatter is the Agent Skills spec; Hermes skills carry extra metadata — does Pi warn, skip or accept? |
@@ -153,7 +157,7 @@ Research notes for these questions and the implementation plans live in the vaul
 ## Development
 
 ```
-plugin/hexpi/            the plugin: plugin.yaml, __init__.py with register(ctx), provider, tests
+plugin/hexpi/            the plugin: plugin.yaml, __init__.py with register(ctx), the pi tool, tests
 docs/                   architecture and stack decisions, once there is something to describe
 ```
 
