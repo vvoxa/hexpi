@@ -41,8 +41,8 @@ new changelog section. Nobody tags by hand, so nobody tags the wrong commit.
 The plugin installs from this repository, so the tag *is* the distribution:
 
 ```bash
-hermes plugins install vvoxa/hexpi          # default branch
-hermes plugins install vvoxa/hexpi --ref <40-char-sha>   # pinned, reproducible
+hermes plugins install vvoxa/hexpi#plugin          # default branch
+hermes plugins install vvoxa/hexpi#plugin --ref <40-char-sha>   # pinned, reproducible
 ```
 
 `hermes plugins install --ref` takes an immutable commit, which is why the README's install line and every
@@ -62,9 +62,9 @@ and the manifest fields Hermes reads.
 ## 5. Gates before the release PR is mergeable
 
 ```bash
-hermes plugins validate plugin/hexpi
-hermes plugins doctor plugin/hexpi --ci
-python3 tests/selfcheck.py
+hermes plugins validate plugin
+hermes plugins doctor plugin --ci
+pytest -q
 ```
 
 All three run in CI on every PR; the release PR is merged only when they are green on it. No manual changelog

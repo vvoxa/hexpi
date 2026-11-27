@@ -28,6 +28,8 @@ Pi and Hermes are dependencies we do not modify.
   collaborators and passes them in. A module that needs something takes it as an argument.
 - One component per file: parsing, protocol, and the tool's handler do not share a module.
 - A file stays under 200 lines, a function under 40. A function that needs a banner comment is two functions.
+- The plugin lives in `plugin/`; the repository root stays free of `__init__.py` so `pytest` never imports the
+  checkout as a package (that breaks in a clone directory whose name is not an identifier).
 - SOLID means: one reason to change per module, depend on the shape you use (a callable, not a class), no god
   object, depth over width.
 
@@ -46,7 +48,7 @@ Pi and Hermes are dependencies we do not modify.
 
 ## Verification
 
-- `hermes plugins validate .` and `hermes plugins doctor . --ci` must pass; validate runs `register()` in a
+- `hermes plugins validate plugin` and `hermes plugins doctor plugin --ci` must pass; validate runs `register()` in a
   stripped host, so keep module import side-effect free.
 - `ruff check .`, `ruff format --check .`, `pytest -q` — all three, no filtering, before a commit.
 - `tests/test_architecture.py` enforces the architecture rules above: sibling imports, sizes, and the absence
@@ -56,8 +58,8 @@ Pi and Hermes are dependencies we do not modify.
 
 ## Seams
 
-- `register(ctx)` is the only entry point. `plugin.yaml` declares what `register()` actually does; the two are
-  checked against each other, so keep them in step in the same commit.
+- `register(ctx)` is the only entry point. `plugin/plugin.yaml` declares what `register()` actually does; the
+  two are checked against each other, so keep them in step in the same commit.
 - This plugin is a **tool**, not a delegation backend: routing a subagent to a profile belongs to
   `advanced-delegation`'s `profile_routes`. Do not add a provider here — two owners for one decision.
 - One tool, `pi`, in one toolset of its own. The profile's model decides to call it; the tool decides nothing

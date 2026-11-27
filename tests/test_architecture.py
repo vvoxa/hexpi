@@ -7,7 +7,7 @@ import tokenize
 
 MAX_FILE_LINES = 200
 MAX_FUNCTION_LINES = 40
-PLUGIN_ROOT = pathlib.Path(__file__).resolve().parent.parent
+PLUGIN_ROOT = pathlib.Path(__file__).resolve().parent.parent / "plugin"
 COMPOSITION_ROOT = "__init__.py"
 
 

@@ -6,10 +6,11 @@ everything.
 ## Components and the composition root
 
 ```
-__init__.py        composition root — the only place that knows every other module
-pi_tool.py         the tool as Hermes sees it: schema + handler, no protocol knowledge
-pi_rpc.py          the RPC client: spawn, framing, ids, completion, cancellation
-pi_home.py         where Pi's home is (later milestone; not needed by the MVP)
+plugin/plugin.yaml     the manifest Hermes reads: name, version, settings, provided tools
+plugin/__init__.py     composition root — the only place that knows every other module
+plugin/pi_tool.py      the tool as Hermes sees it: schema + handler, no protocol knowledge
+plugin/pi_rpc.py       the RPC client: spawn, framing, ids, completion, cancellation
+plugin/pi_home.py      where Pi's home is (later milestone; not needed by the MVP)
 ```
 
 `__init__.py` builds the graph:
@@ -72,5 +73,10 @@ names, types and tests goes in a docstring or in `docs/`.
 
 ## Growth path
 
-When the plugin outgrows four modules, they move into a package (`hexpi/…`) and the root keeps `plugin.yaml`,
-`__init__.py` and nothing else. The import rule does not change; only the paths do.
+The plugin directory is `plugin/`, and its root holds `plugin.yaml` and `__init__.py` only. Internals live
+beside them today because there are two of them; when there are five, they move into `plugin/hexpi/` and
+`__init__.py` keeps importing them by path. The import rule does not change; only the paths do.
+
+`plugin/` is a level down on purpose. A package at the repository root (`/__init__.py`) makes `pytest` import
+the checkout as a module while collecting the tests, and that import fails in any clone whose directory name is
+not a valid Python identifier — `hexpi-test`, for instance. The suite must run from any checkout path.

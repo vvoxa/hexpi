@@ -87,8 +87,8 @@ Paste this into Hermes — desktop or `hermes` on the command line, the same pro
 ```text
 Set up the hexpi coding subagent on this machine.
 
-1. Install the plugin into my current profile from https://github.com/vvoxa/hexpi:
-   hermes plugins install https://github.com/vvoxa/hexpi
+1. Install the plugin into my current profile from https://github.com/vvoxa/hexpi#plugin:
+   hermes plugins install https://github.com/vvoxa/hexpi#plugin
 2. Create a profile named coder as a clone of this one, so it inherits providers, memory, skills and the plugin:
    hermes profile create coder --clone --no-alias
 3. Narrow the clone to two toolsets — the plugin's `pi` and plain file reading:
@@ -105,7 +105,7 @@ Do not restart the gateway. Report what each command printed, including errors.
 Without the prompt, the same steps by hand:
 
 ```bash
-hermes plugins install https://github.com/vvoxa/hexpi
+hermes plugins install https://github.com/vvoxa/hexpi#plugin
 hermes profile create coder --clone --no-alias
 hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
 hermes -p coder config set timeouts.tools.sequential_call 3600
@@ -199,9 +199,10 @@ Research notes for these questions and the implementation plans live in the vaul
 ## Development
 
 ```
-plugin.yaml   __init__.py     the plugin Hermes loads: register(ctx) and nothing else
-pi_tool.py                    the tool schema and its handler
-pi_rpc.py                     the RPC client: framing, ids, completion, cancellation
+plugin/plugin.yaml            the manifest: what this plugin provides
+plugin/__init__.py            the plugin Hermes loads: register(ctx) and nothing else
+plugin/pi_tool.py             the tool schema and its handler
+plugin/pi_rpc.py              the RPC client: framing, ids, completion, cancellation
 tests/                        the specification: few tests, hermetic, named as claims
 docs/architecture.md          components, the composition root, and the rules a test enforces
 docs/testing.md               how we test, what we refuse to test
@@ -211,11 +212,17 @@ pyproject.toml                ruff: the whole style guide, nothing to discuss in
 .gitconfig .editorconfig      settings both the repo and the editor enforce
 ```
 
-The repository root **is** the plugin directory, so `hermes plugins install vvoxa/hexpi` works with no
-subdirectory fragment. A subdirectory layout is supported by Hermes too — `hermes plugins install
-vvoxa/hexpi#plugin`, or `…/tree/main/plugin`, or a catalog entry with `subdir:`; the official
-`hermes-official-plugins` repository is exactly that, because it holds twenty plugins in one repo. With one
-plugin, root keeps every install line short and lets `hermes plugins validate .` run from the checkout.
+The plugin lives in `plugin/`, so the repository root holds the project — README, docs, tests, CI — and the
+plugin directory holds only what Hermes loads. Installing therefore names the subdirectory:
+`hermes plugins install vvoxa/hexpi#plugin` (equivalently `…/tree/main/plugin`, or a catalog entry with
+`subdir:`). That is the same shape the official `hermes-official-plugins` repository uses.
+
+The root package is deliberately **not** `__init__.py` at the top: a Python package at the repository root makes
+`pytest` treat the checkout as an importable module and import it while collecting, which then breaks in any
+directory whose name is not a valid identifier (`hexpi-test`, `hexpi-main`). Keeping the package one level down
+means the suite runs from any clone path.
+
+`hermes plugins validate plugin` and `hermes plugins doctor plugin --ci` run against that directory.
 
 The plugin is Python — the standard library only — because the Hermes plugin API is Python and a second
 runtime would buy nothing. Tests are hermetic: `pytest` in the repository, no network, no real `pi` binary, no
@@ -245,13 +252,13 @@ what it means for an installing user and why the alternatives were rejected — 
 [docs/releases.md](docs/releases.md).
 
 ```bash
-hermes plugins install vvoxa/hexpi                  # default branch
-hermes plugins install vvoxa/hexpi --ref <sha>      # pinned, reproducible
+hermes plugins install vvoxa/hexpi#plugin                  # default branch
+hermes plugins install vvoxa/hexpi#plugin --ref <sha>      # pinned, reproducible
 ```
 
 ## Contributing
 
-- One milestone per change set; keep `hermes plugins validate` and the self-check green.
+- One milestone per change set; keep `hermes plugins validate plugin` and the test suite green.
 - No new dependency without a reason written in `docs/stack.md`.
 - Nothing in tracked files may name a host, a domain, a container or a path on someone's machine — use
   placeholders (`<host>`, `$HERMES_HOME`, `REPLACE_ME`).
