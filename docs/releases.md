@@ -21,15 +21,16 @@ lives in the commit, not in a release meeting.
 
 ## 2. `release-please` turns them into a release PR
 
-> Status: the workflow below lands in milestone 1, together with `plugin.yaml` and `pyproject.toml` — it has
-> nothing to bump before those exist. The rule it depends on (conventional commits) applies from now on.
+> Status: the workflow below lands in milestone 1, together with `plugin.yaml` — it has nothing to bump before
+> that file exists. The rule it depends on (conventional commits) applies from now on.
 
 `.github/workflows/release.yml` runs
 [`googleapis/release-please-action`](https://github.com/googleapis/release-please) on every push to `main`.
 It opens (and keeps updating) one pull request per unreleased change:
 
-- bumps `version` in the places listed in `release-please-config.json` — `plugin.yaml` and `pyproject.toml`
-  (the plugin's manifest and its packaging must never disagree);
+- bumps `version` in the places listed in `release-please-config.json` — `plugin.yaml` is the one that exists
+  today; a `pyproject.toml` joins the list if and when the plugin is packaged, so the manifest and the package
+  can never disagree;
 - writes the next `CHANGELOG.md` section from the commit messages since the last tag.
 
 Merging that PR is the release. The action then creates the tag `vX.Y.Z` and a GitHub release whose body is the
