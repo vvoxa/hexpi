@@ -5,23 +5,28 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from . import pi_tool
+from . import pi_rpc, pi_tool
 
 logger = logging.getLogger(__name__)
+DEFAULT_TIMEOUT_S = 3600
 
 
 def register(ctx: Any) -> None:
     """Register the one `pi` tool; a plugin that fails here must not cost the profile."""
 
-    def handler(arguments: dict[str, Any], **_kwargs: Any) -> str:
-        return pi_tool.run(arguments or {})
+    def turn(prompt: str, cwd: Any) -> Any:
+        timeout_s = float(ctx.get_config("timeout_s", DEFAULT_TIMEOUT_S) or DEFAULT_TIMEOUT_S)
+        return pi_rpc.run_turn(prompt, cwd, timeout_s=timeout_s)
+
+    def handle(arguments: dict[str, Any], **_kwargs: Any) -> str:
+        return pi_tool.handler(turn)(arguments)
 
     try:
         ctx.register_tool(
             name="pi",
             toolset="hexpi",
             schema=pi_tool.SCHEMA,
-            handler=handler,
+            handler=handle,
             description="Run the Pi coding agent on a task in the working directory.",
             emoji="🥧",
         )

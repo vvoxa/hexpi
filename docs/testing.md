@@ -39,10 +39,11 @@ rule above, checked by hand in review and by naming the RED in every task.
 | File | Subject |
 |---|---|
 | `test_tool_contract.py` | what the `pi` tool promises Hermes: schema, arguments, always a string back |
-| `test_rpc_turn.py` | one prompt in, Pi's final text out |
-| `test_rpc_protocol.py` | framing, ids, `agent_settled`, dialog replies |
-| `test_rpc_failure.py` | missing binary, timeout, abort, stderr in the message |
+| `test_rpc_turn.py` | one prompt in, Pi's final text out, and the ways that fails |
 | `test_architecture.py` | the import graph, file and function sizes, no comments |
+
+`tests/fake_pi.py` is the scripted Pi: a real process that speaks the same argv and the same JSONL, replays
+a scenario and records every line that crossed the pipe. No network, no provider, no real `pi`.
 
 Each test is named as a claim about the system, and the file reads as a list of claims:
 

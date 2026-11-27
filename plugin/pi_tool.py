@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
+
+Turn = Callable[..., Any]
 
 SCHEMA: dict[str, Any] = {
     "name": "pi",
@@ -27,11 +31,24 @@ SCHEMA: dict[str, Any] = {
 }
 
 
-def run(arguments: dict[str, Any]) -> str:
-    """Return JSON with a ``status``: the work done, or why it is not done."""
+def handler(turn: Turn) -> Callable[[dict[str, Any]], str]:
+    """Build the handler around one ``turn(prompt, cwd)`` callable, which is all it knows of Pi."""
+
+    def run(arguments: dict[str, Any]) -> str:
+        return _answer(arguments or {}, turn)
+
+    return run
+
+
+def _answer(arguments: dict[str, Any], turn: Turn) -> str:
     prompt = str(arguments.get("prompt") or "").strip()
     if not prompt:
         return json.dumps(
             {"status": "error", "error": "prompt is required: hand Pi the task to do"}
         )
-    return json.dumps({"status": "not_implemented", "detail": "RPC client arrives in milestone 2"})
+    cwd = Path(str(arguments.get("cwd") or ".")).expanduser()
+    try:
+        result = turn(prompt, cwd)
+    except Exception as exc:
+        return json.dumps({"status": "error", "error": str(exc) or type(exc).__name__})
+    return json.dumps({"status": "ok", "text": result.text, "exit_code": result.exit_code})
