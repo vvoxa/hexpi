@@ -16,6 +16,7 @@ coding subagent of Hermes.
 - [How it works](#how-it-works)
 - [Roadmap](#roadmap)
 - [Development](#development)
+- [Releases](#releases)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -57,18 +58,50 @@ it did, and leave no process or session behind.
 
 ## Installation
 
-Not yet installable — the plugin skeleton lands in milestone 1. Target flow, on the profile that should
-code with Pi:
+Not yet installable — the plugin skeleton lands in milestone 1. Two things have to exist first: Pi itself, and
+a Hermes profile to put the tool in.
 
 ```bash
-hermes -p <profile> plugins install <owner>/hexpi
-hermes plugins validate hexpi
-hermes -p <profile> config set platform_toolsets.cli '[hexpi, file, skills]'
-hermes -p <profile> config set timeouts.tools.sequential_call 3600
+npm install -g @earendil-works/pi-coding-agent    # Node.js 22.19+, or use https://pi.dev/install.sh
+pi --version
+pi                                                # authenticate once, configure codemode if you want it
 ```
 
-And, once, on the profile doing the delegating: the official `advanced-delegation` plugin, mode
-`profile_routes`, listing that profile. For kanban, the card's assignee is the profile name.
+### Ask Hermes to set up the profile
+
+Paste this into Hermes — desktop or `hermes` on the command line, the same prompt works in both:
+
+```text
+Set up the hexpi coding subagent on this machine.
+
+1. Create a profile named coder as a clone of my current profile, so it inherits providers, memory and skills:
+   hermes profile create coder --clone --no-alias
+2. Install the plugin into that profile from https://github.com/vvoxa/hexpi:
+   hermes -p coder plugins install https://github.com/vvoxa/hexpi
+3. Give the profile exactly two toolsets — the plugin's `pi` and plain file reading:
+   hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
+4. Give one pi run room to finish (the executor's per-tool deadline is 420s by default):
+   hermes -p coder config set timeouts.tools.sequential_call 3600
+5. Check it and report back verbatim: hermes plugins list for that profile, and the output of
+   hermes -p coder config get platform_toolsets
+
+Do not restart the gateway. Report what each command printed, including errors.
+```
+
+On the profile you delegate *from*, install the official `advanced-delegation` plugin once and switch it to
+`profile_routes`, listing `coder` with a one-line description. For kanban, the card's assignee is `coder` —
+worktree isolation is the dispatcher's job and needs nothing from this plugin.
+
+Without the prompt, the same steps by hand:
+
+```bash
+hermes profile create coder --clone --no-alias
+hermes -p coder plugins install https://github.com/vvoxa/hexpi
+hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
+hermes -p coder config set timeouts.tools.sequential_call 3600
+hermes plugins install advanced-delegation
+hermes config set delegation.backend profile_routes
+```
 
 ## Configuration
 
@@ -153,7 +186,7 @@ Research notes for these questions and the implementation plans live in the vaul
 
 ```
 plugin/hexpi/            the plugin: plugin.yaml, __init__.py with register(ctx), the pi tool, tests
-docs/                   architecture and stack decisions, once there is something to describe
+docs/releases.md         how a version, a changelog and a tag come out of commit messages
 ```
 
 The plugin is Python — the standard library only — because the Hermes plugin API is Python and a second
@@ -163,6 +196,18 @@ a test that needs a real `pi` binary or a real provider is not a test.
 ```bash
 git clone <repo> hexpi && cd hexpi
 python3 tests/selfcheck.py        # once milestone 1 lands
+```
+
+## Releases
+
+Commit messages are the changelog: [Conventional Commits](https://www.conventionalcommits.org/), and
+`release-please` turns them into a version bump, a `CHANGELOG.md` entry and a tag. The full route — including
+what it means for an installing user and why the alternatives were rejected — is in
+[docs/releases.md](docs/releases.md).
+
+```bash
+hermes plugins install vvoxa/hexpi                  # default branch
+hermes plugins install vvoxa/hexpi --ref <sha>      # pinned, reproducible
 ```
 
 ## Contributing
