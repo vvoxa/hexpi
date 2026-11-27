@@ -14,6 +14,9 @@ FAKE_PI = Path(__file__).resolve().parent / "fake_pi.py"
 
 
 def _load(name, path, search=None):
+    """Import once per run, so every test file sees the same module and exception classes."""
+    if name in sys.modules:
+        return sys.modules[name]
     spec = importlib.util.spec_from_file_location(name, path, submodule_search_locations=search)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
@@ -38,12 +41,22 @@ def declared_tools():
     return [name.strip() for name in line.partition(":")[2].strip().strip("[]").split(",") if name]
 
 
-def fake_pi(directory, emit, stderr="", exit_code=0, pid_file=None, *, linger=False):
+def fake_pi(
+    directory, emit, stderr="", exit_code=0, pid_file=None, *, settle_on_abort=False, linger=False
+):
     """A `pi` on PATH that speaks the recorded scenario: returns (binary, log path)."""
     directory = Path(directory)
     scenario = directory / "scenario.json"
     scenario.write_text(
-        json.dumps({"emit": emit, "stderr": stderr, "exit": exit_code, "linger": linger})
+        json.dumps(
+            {
+                "emit": emit,
+                "stderr": stderr,
+                "exit": exit_code,
+                "settle_on_abort": settle_on_abort,
+                "linger": linger,
+            }
+        )
     )
     log = directory / "pi.log"
     log.write_text("")

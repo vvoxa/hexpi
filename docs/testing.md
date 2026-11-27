@@ -39,7 +39,9 @@ rule above, checked by hand in review and by naming the RED in every task.
 | File | Subject |
 |---|---|
 | `test_tool_contract.py` | what the `pi` tool promises Hermes: schema, arguments, always a string back |
-| `test_rpc_turn.py` | one prompt in, Pi's final text out, and the ways that fails |
+| `test_rpc_turn.py` | one prompt in, Pi's final text out, dialogs answered, the stream followed to the end |
+| `test_rpc_protocol.py` | what a record means: framing, completion, the final text, dialog answers |
+| `test_rpc_failure.py` | timeout, cancellation, a dead process, a missing binary |
 | `test_architecture.py` | the import graph, file and function sizes, no comments |
 
 `tests/fake_pi.py` is the scripted Pi: a real process that speaks the same argv and the same JSONL, replays

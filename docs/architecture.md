@@ -9,7 +9,9 @@ everything.
 plugin/plugin.yaml     the manifest Hermes reads: name, version, settings, provided tools
 plugin/__init__.py     composition root — the only place that knows every other module
 plugin/pi_tool.py      the tool as Hermes sees it: schema + handler, no protocol knowledge
-plugin/pi_rpc.py       the RPC client: spawn, framing, ids, completion, cancellation
+plugin/pi_stream.py    what a record means: framing, completion, final text, dialog answers
+plugin/pi_process.py   the child process: spawn, read by line, write, close, kill the group
+plugin/pi_rpc.py       the run: prompt in, deadline, dialog answers, cancellation, result out
 plugin/pi_home.py      where Pi's home is (later milestone; not needed by the MVP)
 ```
 

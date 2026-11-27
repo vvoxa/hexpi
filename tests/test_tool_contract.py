@@ -53,6 +53,14 @@ def test_a_failed_run_reaches_the_model_as_an_error_string():
     assert answer == {"status": "error", "error": "pi not found on PATH"}
 
 
+def test_a_cancelled_run_comes_back_as_cancelled_not_ok():
+    turn = lambda prompt, cwd: SimpleNamespace(text="", exit_code=None, cancelled=True)  # noqa: E731
+
+    answer = json.loads(pi_tool.handler(turn)({"prompt": "do it"}))
+
+    assert answer["status"] == "cancelled"
+
+
 def test_the_registered_handler_runs_pi_in_rpc_mode_end_to_end(tmp_path, monkeypatch):
     settled = [
         message_end("renamed"),

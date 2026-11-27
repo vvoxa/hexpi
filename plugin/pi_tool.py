@@ -51,4 +51,5 @@ def _answer(arguments: dict[str, Any], turn: Turn) -> str:
         result = turn(prompt, cwd)
     except Exception as exc:
         return json.dumps({"status": "error", "error": str(exc) or type(exc).__name__})
-    return json.dumps({"status": "ok", "text": result.text, "exit_code": result.exit_code})
+    status = "cancelled" if getattr(result, "cancelled", False) else "ok"
+    return json.dumps({"status": status, "text": result.text, "exit_code": result.exit_code})

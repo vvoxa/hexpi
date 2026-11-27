@@ -3,9 +3,9 @@
 **Hermes × Pi.** A Hermes plugin that makes [Pi](https://docs.pi.dev) — a terminal coding agent — a native
 coding subagent of Hermes.
 
-> **Status: pre-alpha.** Milestones 1 and 2 are in the tree: the plugin loads, and its one tool runs Pi in
-> RPC mode and returns Pi's final text. Not yet hardened — framing, dialogs, cancellation and kanban wiring are
-> the next milestones. The roadmap below is the plan of record.
+> **Status: pre-alpha.** Milestones 1–3 are in the tree: the plugin loads, its one tool runs Pi in RPC mode and
+> returns Pi's final text, and the protocol is covered — line framing, id correlation, dialog replies,
+> cancellation that reaches the process, stderr in every error. Profile wiring and the kanban path are next.
 
 ## Table of contents
 
@@ -190,7 +190,7 @@ Milestones are ordered; each one is shippable on its own.
 | 0 | Repository | README, `AGENTS.md`, MIT, this roadmap | — |
 | 1 | Plugin skeleton ✅ | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Does a plugin toolset survive `platform_toolsets` narrowing in a profile clone? |
 | 2 | The `pi` tool end to end ✅ | `pi --mode rpc --no-session` in the working directory: one prompt in, final text out, error paths named | Answered: a rejected prompt comes back as `success: false` with the provider's message, which becomes the tool's error text |
-| 3 | RPC hardened | Framing by LF only, id correlation, `extension_ui_request` answered `cancelled`, abort on interrupt, stderr tail in errors, process tree killed on timeout | Where does Pi's output get too large to return, and what is a useful truncation? |
+| 3 | RPC hardened ✅ | Framing by LF only, id correlation, `extension_ui_request` answered `cancelled`, abort on interrupt, stderr tail in errors, process tree killed on timeout | Open: where does Pi's output get too large to return, and what is a useful truncation? |
 | 4 | Profile wiring | The documented recipe: cloned profile, `advanced-delegation` profile route, `platform_toolsets` narrowed to the `pi` toolset, kanban assignee | Child toolsets come from the calling profile, not the target profile — does the tool still reach a delegated child? |
 | 5 | Integrations | Hermes skills and memory reachable from Pi; a separate Pi home if one is needed by then | MCP server, injected context document, or a pre-run hook — which one survives Pi's session model? |
 
