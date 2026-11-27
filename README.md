@@ -67,41 +67,53 @@ pi --version
 pi                                                # authenticate once, configure codemode if you want it
 ```
 
-### Ask Hermes to set up the profile
+### Order matters: install where the work is delegated *from*
+
+A delegated subagent inherits its toolset list from the profile that delegated, not from the profile it runs
+as (`tools/delegate_tool.py:269` computes the list before the child enters the target profile's scope). So the
+plugin must be installed in the profile you delegate *from* — normally `default`, since that is where you work.
+Install there first, then clone: a clone copies installed plugins and `platform_toolsets`, so `coder` starts
+with the plugin already in place, and narrowing its toolset list afterwards keeps `pi` and drops the rest.
+
+Installing only into `coder` works for kanban (that worker is a separate `hermes -p coder` process with its own
+config) but leaves a delegated subagent without the `pi` tool.
+
+### Ask Hermes to set it up
 
 Paste this into Hermes — desktop or `hermes` on the command line, the same prompt works in both:
 
 ```text
 Set up the hexpi coding subagent on this machine.
 
-1. Create a profile named coder as a clone of my current profile, so it inherits providers, memory and skills:
+1. Install the plugin into my current profile from https://github.com/vvoxa/hexpi:
+   hermes plugins install https://github.com/vvoxa/hexpi
+2. Create a profile named coder as a clone of this one, so it inherits providers, memory, skills and the plugin:
    hermes profile create coder --clone --no-alias
-2. Install the plugin into that profile from https://github.com/vvoxa/hexpi:
-   hermes -p coder plugins install https://github.com/vvoxa/hexpi
-3. Give the profile exactly two toolsets — the plugin's `pi` and plain file reading:
+3. Narrow the clone to two toolsets — the plugin's `pi` and plain file reading:
    hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
-4. Give one pi run room to finish (the executor's per-tool deadline is 420s by default):
+4. Give one pi run room to finish (the executor's per-tool deadline is 420s by default), in both profiles:
    hermes -p coder config set timeouts.tools.sequential_call 3600
-5. Check it and report back verbatim: hermes plugins list for that profile, and the output of
+5. Route delegation to that profile: install the official advanced-delegation plugin and switch the backend.
+6. Check it and report back verbatim: hermes plugins list, and the output of
    hermes -p coder config get platform_toolsets
 
 Do not restart the gateway. Report what each command printed, including errors.
 ```
 
-On the profile you delegate *from*, install the official `advanced-delegation` plugin once and switch it to
-`profile_routes`, listing `coder` with a one-line description. For kanban, the card's assignee is `coder` —
-worktree isolation is the dispatcher's job and needs nothing from this plugin.
-
 Without the prompt, the same steps by hand:
 
 ```bash
+hermes plugins install https://github.com/vvoxa/hexpi
 hermes profile create coder --clone --no-alias
-hermes -p coder plugins install https://github.com/vvoxa/hexpi
 hermes -p coder config set platform_toolsets.cli '["hexpi", "file"]'
 hermes -p coder config set timeouts.tools.sequential_call 3600
 hermes plugins install advanced-delegation
 hermes config set delegation.backend profile_routes
 ```
+
+Then list `coder` under `profile_routes` with a one-line description (`hermes delegation config`, or the
+Subagents section of the desktop settings). For kanban, the card's assignee is `coder` — worktree isolation is
+the dispatcher's job and needs nothing from this plugin.
 
 ## Configuration
 
@@ -198,7 +210,10 @@ pyproject.toml                ruff: the whole style guide, nothing to discuss in
 ```
 
 The repository root **is** the plugin directory, so `hermes plugins install vvoxa/hexpi` works with no
-subdirectory fragment.
+subdirectory fragment. A subdirectory layout is supported by Hermes too — `hermes plugins install
+vvoxa/hexpi#plugin`, or `…/tree/main/plugin`, or a catalog entry with `subdir:`; the official
+`hermes-official-plugins` repository is exactly that, because it holds twenty plugins in one repo. With one
+plugin, root keeps every install line short and lets `hermes plugins validate .` run from the checkout.
 
 The plugin is Python — the standard library only — because the Hermes plugin API is Python and a second
 runtime would buy nothing. Tests are hermetic: `pytest` in the repository, no network, no real `pi` binary, no
