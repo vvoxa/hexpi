@@ -90,12 +90,21 @@ class FakeContext:
 
 
 def assert_exited(pid, timeout_s=5.0):
-    """Wait until the process is gone; a survivor fails the test that called it."""
+    """Wait until the process is gone; a survivor fails the test that called it.
+
+    A bare ``os.kill(pid, 0)`` is not enough: the pid may already belong to an unrelated process
+    spawned by a neighbouring test, which makes this flaky. On Linux the command line settles it.
+    """
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
             os.kill(pid, 0)
         except ProcessLookupError:
+            return True
+        if (
+            Path(f"/proc/{pid}/cmdline").exists()
+            and "fake_pi" not in Path(f"/proc/{pid}/cmdline").read_text()
+        ):
             return True
         time.sleep(0.05)
     raise AssertionError(f"process {pid} is still alive")
