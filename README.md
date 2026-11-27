@@ -188,7 +188,9 @@ Research notes for these questions and the implementation plans live in the vaul
 plugin.yaml   __init__.py     the plugin Hermes loads: register(ctx) and nothing else
 pi_tool.py                    the tool schema and its handler
 pi_rpc.py                     the RPC client: framing, ids, completion, cancellation
-tests/                        plain-assert self-check, no framework, no network
+tests/                        the specification: few tests, hermetic, named as claims
+docs/architecture.md          components, the composition root, and the rules a test enforces
+docs/testing.md               how we test, what we refuse to test
 docs/releases.md              how a version, a changelog and a tag come out of commit messages
 docs/style.md                 why these ruff rules, and which ones are deliberately off
 pyproject.toml                ruff: the whole style guide, nothing to discuss in review
@@ -199,19 +201,24 @@ The repository root **is** the plugin directory, so `hermes plugins install vvox
 subdirectory fragment.
 
 The plugin is Python — the standard library only — because the Hermes plugin API is Python and a second
-runtime would buy nothing. Tests are plain asserts run by a script, with no framework and no network:
-a test that needs a real `pi` binary or a real provider is not a test.
+runtime would buy nothing. Tests are hermetic: `pytest` in the repository, no network, no real `pi` binary, no
+provider. How many tests and what they are allowed to assert: `docs/testing.md`.
 
 ```bash
 git clone https://github.com/vvoxa/hexpi && cd hexpi
 git config --local include.path ../.gitconfig   # the repo's shared git settings
-pip install ruff
-ruff check . && ruff format --check .          # what CI runs
-python3 tests/selfcheck.py                      # once milestone 1 lands
+pip install ruff pytest
+ruff check . && ruff format --check . && pytest -q    # what CI runs
 ```
 
-Ruff is the style authority; do not argue with it in review, and do not silence it — a `# noqa` needs a reason
-in the same line. Why these rules and not others: `docs/style.md`.
+Three rules that shape every review:
+
+- **No comments.** A name, a type, a test or a docstring on the public API carries the reason. The build fails on
+  a `#` in the plugin.
+- **Ruff is the style authority.** Do not argue with it in review and do not silence it; a `# noqa` needs its
+  reason on the same line. Why these rules: `docs/style.md`.
+- **A module never imports a sibling module.** `__init__.py` is the composition root and the only place that
+  wires them. Sizes and the rest: `docs/architecture.md`.
 
 ## Releases
 

@@ -40,11 +40,22 @@ Each one is a decision, and each is one line in `pyproject.toml`:
 
 ## Rules that are not ruff's job
 
-These live in `AGENTS.md` because a linter cannot check them:
+These live in `AGENTS.md` and `docs/architecture.md` because a linter cannot check them:
 
-- no comments that restate the code; a docstring carries what the code cannot;
+- **no `#` comments at all** — enforced by `tests/test_architecture.py`, not by ruff, because the rule is
+  absolute here rather than a style preference;
+- a docstring only on a module's public API, meaning what `__init__.py` calls or a test uses; it says what the
+  function returns on failure, and it never restates the signature;
 - no dependency without a line in this file explaining what it buys;
-- every public function's docstring says what it returns on failure.
+- a module never imports a sibling module; `__init__.py` is the only composition root.
+
+## The two rules that outrank the linter
+
+Ruff cannot see them, and they are the ones that decide whether the code survives:
+
+1. **A test that would pass with the behaviour deleted is not a test** — `docs/testing.md`.
+2. **A `# noqa` is a claim that the rule is wrong here.** It needs its reason on the same line; the ones we
+   accepted on purpose are listed above so nobody re-litigates them per file.
 
 ## Why not a type checker yet
 

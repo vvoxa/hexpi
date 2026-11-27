@@ -15,16 +15,42 @@ Pi and Hermes are dependencies we do not modify.
   with `hermes config set` — a setting that only works on one surface is half a setting.
 - **No infrastructure specifics in tracked files.** No hostnames, domains, addresses, container names, panel
   URLs, or paths from a real machine. Placeholders: `<host>`, `$HERMES_HOME`, `REPLACE_ME`.
-- **No comments.** A name, a type or a docstring carries the reason; a comment restating the code is a second
-  copy of a fact, and a banner means the file holds two subjects.
+- **Comments are a defect.** `#` is banned outright (`tests/test_architecture.py` fails the build). What the
+  code cannot say with names, types and tests goes in a docstring — and only a module's public API gets one,
+  meaning what `__init__.py` calls or a test uses. An internal helper earns a better name instead of a
+  sentence.
+
+## Architecture
+
+`docs/architecture.md` is the shape; these are the parts that are easy to break:
+
+- **A module never imports another module of this plugin.** `__init__.py` is the composition root: it builds
+  collaborators and passes them in. A module that needs something takes it as an argument.
+- One component per file: parsing, protocol, and the tool's handler do not share a module.
+- A file stays under 200 lines, a function under 40. A function that needs a banner comment is two functions.
+- SOLID means: one reason to change per module, depend on the shape you use (a callable, not a class), no god
+  object, depth over width.
+
+## Tests
+
+`docs/testing.md` is the process. The rules that decide whether a test is allowed to exist:
+
+- **A test must fail when the behaviour disappears.** Name the expected RED before writing code.
+- Few tests, about behaviours a user would recognise, named as claims ("a prompt returns the final assistant
+  text"), never `test_happy_path`.
+- Hermetic: no network, no real `pi`, no live provider. Fakes are scripted peers in `tests/support.py`; inject
+  through the constructor, do not monkeypatch module globals.
+- Assertions are frozen acceptance criteria: changing one is a `test!:` commit with the behaviour change
+  spelled out. Never edit a test to make an implementation pass.
+- No coverage target.
 
 ## Verification
 
 - `hermes plugins validate .` and `hermes plugins doctor . --ci` must pass; validate runs `register()` in a
   stripped host, so keep module import side-effect free.
-- Tests are hermetic: plain asserts in `tests/`, run by `python3 tests/selfcheck.py`, no framework, no network,
-  no real `pi` binary, no live provider. Stub the subprocess, assert on the argv it would have been started with
-  and on the JSONL records exchanged — that is where the contract lives.
+- `ruff check .`, `ruff format --check .`, `pytest -q` — all three, no filtering, before a commit.
+- `tests/test_architecture.py` enforces the architecture rules above: sibling imports, sizes, and the absence
+  of `#` comments. If it fails, fix the code, not the test.
 - Prove a negative claim before writing it down: "Pi does X when missing" needs a run that shows it, not a
   reading of the docs.
 

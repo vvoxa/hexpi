@@ -13,13 +13,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install ruff
+      - run: pip install ruff pytest
       - run: ruff check .
       - run: ruff format --check .
-      - name: self-check
-        run: |
-          if [ -f tests/selfcheck.py ]; then
-            python3 tests/selfcheck.py
-          else
-            echo "no self-check yet (milestone 1 adds it)"
-          fi
+      - run: pytest -q
