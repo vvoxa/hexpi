@@ -29,31 +29,31 @@ model, credentials, skills and instructions — which makes it the right place t
 the subagent; Pi is how it writes code. Any profile with `hexpi` in it — whether reached through delegation,
 through the kanban dispatcher, or opened directly — codes with Pi.
 
-Everything Pi needs is configured from Hermes: provider, model, reasoning effort, codemode, the Pi home
-directory. Pi itself is never configured by hand, and the user's own `~/.pi` is never touched.
+Pi keeps its own configuration — model, provider, credentials, codemode — so there is nothing to duplicate
+here. The plugin's job is the call: start Pi, hand it one prompt, follow the protocol to the end, return what
+it did, and leave no process or session behind.
 
 ## Features
 
 - **One tool, `pi`.** The profile gets a single capability; the coding is Pi's, not the profile model's.
 - **Works wherever a profile works.** Delegation by profile route, a kanban assignee, or a profile opened by
-  hand — the same tool, the same isolated Pi home.
-- **Deep integration with Hermes.** Pi gets the Hermes skills and the Hermes memory providers, so it works
-  with the same knowledge the rest of the fleet does instead of starting from zero.
-- **Forced codemode.** One switch turns on Pi's `codemode` tool (JavaScript that calls the other tools) for
-  every run.
-- **Configured from Hermes.** Provider, model, reasoning effort and API credentials are passed to Pi on the
-  command line; no `pi auth login`, no `~/.pi/agent/settings.json` editing.
-- **Pi installed on demand.** Missing from `PATH`? `hexpi` installs it.
-- **Its own home.** `hexpi` keeps Pi's config, sessions and packages under its own directory, so the user's Pi
-  installation stays untouched and no session litter accumulates.
-- **Both surfaces.** Every setting works in the Hermes desktop app and in `hermes` on the command line.
+  hand — the same tool, the same behaviour.
+- **A covered RPC session.** Framing, id correlation, completion by `agent_settled`, dialog requests answered,
+  cancellation that kills the process, stderr kept for the error message.
+- **Pi as it is.** codemode, provider, model and credentials stay Pi's own settings; the plugin adds nothing
+  Pi would have to be reconfigured for.
+- **No litter.** Runs carry `--no-session`, so the user's Pi history stays theirs.
+- **Tool-native.** One call, one result — usable from a chat, a delegated profile, a kanban worker or cron.
+- **Both surfaces.** The tool is registered the same way for the desktop app and for `hermes` on the command
+  line.
 
 ## Requirements
 
 - Hermes Agent 0.23.0 or newer (plugin API)
 - Python 3.11+ (the Hermes runtime; the plugin uses the standard library only)
-- Network access on first run if Pi has to be installed
-- A provider credential for the model Pi will use — held by Hermes, passed to Pi per run
+- Pi on `PATH` — `npm install -g @earendil-works/pi-coding-agent` (Node.js 22.19+), or the installer from
+  <https://pi.dev>
+- Pi authenticated and configured the way you want it to run — `hexpi` does not do that for you
 
 ## Installation
 
@@ -63,7 +63,8 @@ code with Pi:
 ```bash
 hermes -p <profile> plugins install <owner>/hexpi
 hermes plugins validate hexpi
-hermes config set platform_toolsets.cli '[hexpi, file, skills]'
+hermes -p <profile> config set platform_toolsets.cli '[hexpi, file, skills]'
+hermes -p <profile> config set timeouts.tools.sequential_call 3600
 ```
 
 And, once, on the profile doing the delegating: the official `advanced-delegation` plugin, mode
@@ -71,27 +72,26 @@ And, once, on the profile doing the delegating: the official `advanced-delegatio
 
 ## Configuration
 
-Settings live under `plugins.entries.hexpi.settings` — the same tree the desktop settings pane renders and
-`hermes config set` writes.
+Pi configures itself. The MVP passes nothing to it that Pi could read from its own settings:
+`codemode` is Pi's `defaultTools`, provider and model are Pi's own config, credentials are Pi's own auth.
+
+The plugin has one setting, and it is about the tool call rather than Pi:
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `description` | str | `coding` | What this profile's `pi` tool is for, as the settings pane shows it |
-| `home` | str | `<HERMES_HOME>/hexpi/pi` | Pi's home for `hexpi` (`PI_CODING_AGENT_DIR`). Never `~/.pi` |
-| `pi_bin` | str | *(from `PATH`)* | Explicit Pi executable |
-| `auto_install` | bool | `true` | Install Pi when it is missing |
-| `provider` | str | *(inherited)* | Provider name passed to `--provider` |
-| `model` | str | *(inherited)* | Model id passed to `--model` |
-| `thinking` | str | *(unset)* | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` → `--thinking` |
-| `codemode` | bool | `true` | Force Pi's `codemode` tool on |
-| `skills` | bool | `true` | Expose the Hermes skills to Pi |
-| `memory` | bool | `true` | Expose the Hermes memory providers to Pi |
+| `timeout_s` | int | `3600` | How long one `pi` call may run before the process tree is killed |
 
 ```bash
-hermes config set plugins.entries.hexpi.settings.model sonnet
-hermes config set plugins.entries.hexpi.settings.thinking high
-hermes config set plugins.entries.hexpi.settings.home /data/hexpi-pi
+hermes config set plugins.entries.hexpi.settings.timeout_s 3600
 hermes config get plugins.entries.hexpi
+```
+
+Hermes' own per-tool deadline (`timeouts.tools.sequential_call`, 420 s by default) sits below this one; raise
+it on the profile that runs Pi, or a long coding task is cut off by the executor's timer:
+
+```bash
+hermes config set timeouts.tools.sequential_call 3600
+hermes gateway restart
 ```
 
 ## Usage
@@ -114,10 +114,9 @@ Four moving parts:
    Reachable by delegation (profile route), by kanban assignee, or by hand.
 2. **The tool.** `hexpi` registers exactly one tool, `pi`, in its own toolset. The profile's model decides to
    call it; Pi decides how to code.
-3. **The process.** Pi runs as a subprocess in `--mode rpc` (JSONL on stdin/stdout): one prompt in, session
-   events out, `agent_settled` as the completion signal.
-4. **The home.** `PI_CODING_AGENT_DIR` points at the plugin's own directory, so `hexpi` has its own
-   `settings.json`, sessions and packages while `~/.pi` keeps the user's.
+3. **The process.** Pi runs as a subprocess in `--mode rpc --no-session` (JSONL on stdin/stdout): one prompt
+   in, session events out, `agent_settled` as the completion signal. `--no-session` is what keeps the user's
+   Pi home clean of our runs; nothing else about Pi's configuration is touched.
 
 Deliberately **not** in scope: vendoring or forking Pi, writing into the user's `~/.pi`, running Pi on another
 machine (that is a transport problem, not a plugin's), and re-implementing ACP.
@@ -127,8 +126,8 @@ machine (that is a transport problem, not a plugin's), and re-implementing ACP.
 | Decision | Reason |
 |---|---|
 | Pi is driven in **RPC mode** (`pi --mode rpc`) | JSONL records with ids, a real completion signal (`agent_settled`), runtime model/effort switching, cancellation that reaches the process |
-| Pi runs with its **own** `PI_CODING_AGENT_DIR` | the user's `~/.pi` stays theirs; sessions and packages do not mix |
-| Settings reach Pi as **arguments and files in that home** | no `pi auth login`, no editing Pi's settings by hand |
+| MVP: **`--no-session`**, no custom Pi home | one flag keeps our runs out of the user's Pi sessions; a separate home buys nothing until `hexpi` needs its own `settings.json` |
+| Pi configures **itself** (codemode, provider, model, credentials) | duplicating Pi's own settings in the plugin is a second source of truth with no benefit |
 | The plugin is **Python, standard library only** | the Hermes plugin API is Python; a second runtime buys nothing |
 | No core patch | the subagent is a stock Hermes profile; hexpi only adds a tool, so nothing in Hermes has to change |
 | No delegation backend in this plugin | routing a subagent to a profile is `advanced-delegation`'s `profile_routes` mode; duplicating it would put two owners on one decision |
@@ -143,14 +142,10 @@ Milestones are ordered; each one is shippable on its own.
 |---|---|---|---|
 | 0 | Repository | README, `AGENTS.md`, MIT, this roadmap | — |
 | 1 | Plugin skeleton | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Does a plugin toolset survive `platform_toolsets` narrowing in a profile clone? |
-| 2 | Pi runtime | Resolve `pi` from `PATH` or install it; isolated `PI_CODING_AGENT_DIR`; `hermes -p <profile> hexpi doctor` reporting version, home, provider | Which install path is authoritative — the shell installer or npm? Both must be supported; which one is default? |
-| 3 | The `pi` tool | RPC subprocess: prompt → events → result; cancellation, timeouts, exit codes, the diff left in the tree | Can a tool call report progress while Pi works, and does a long run survive the tool timeout? |
+| 2 | The `pi` tool end to end | `pi --mode rpc --no-session` in the working directory: one prompt in, final text out, error paths named | Does `agent_settled` arrive for a prompt that does nothing, and what does a rejected prompt look like? |
+| 3 | RPC hardened | Framing by LF only, id correlation, `extension_ui_request` answered `cancelled`, abort on interrupt, stderr tail in errors, process tree killed on timeout | Where does Pi's output get too large to return, and what is a useful truncation? |
 | 4 | Profile wiring | The documented recipe: cloned profile, `advanced-delegation` profile route, `platform_toolsets` narrowed to the `pi` toolset, kanban assignee | Child toolsets come from the calling profile, not the target profile — does the tool still reach a delegated child? |
-| 5 | Model and effort | `provider`, `model`, `thinking` mapped onto `--provider`, `--model`, `--thinking`; credentials handed to Pi per run | Where do Pi's env-var credentials come from — Hermes' provider config, `.env`, or a per-run injection? |
-| 6 | Forced codemode | `codemode: true` → `--tools +codemode` on every run, independently of Pi's own `settings.json` | Do `--tools` and the isolated `defaultTools` agree, or does one silently win? |
-| 7 | Hermes skills | Hermes skills visible to Pi (symlink or configured skill location); only enabled skills exposed | Pi's skill frontmatter is the Agent Skills spec; Hermes skills carry extra metadata — does Pi warn, skip or accept? |
-| 8 | Hermes memory | Memory providers reachable from Pi; recalled context injected without a second implementation | MCP server, injected context document, or a pre-run hook — which one survives Pi's session model? |
-| 9 | Hardening | Hermetic tests (no network, no live Pi), docs, error paths, uninstall that removes the plugin's home | — |
+| 5 | Integrations | Hermes skills and memory reachable from Pi; a separate Pi home if one is needed by then | MCP server, injected context document, or a pre-run hook — which one survives Pi's session model? |
 
 Research notes for these questions and the implementation plans live in the vault, not in this repository.
 
