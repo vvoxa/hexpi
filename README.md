@@ -3,7 +3,8 @@
 **Hermes × Pi.** A Hermes plugin that makes [Pi](https://docs.pi.dev) — a terminal coding agent — a native
 coding subagent of Hermes.
 
-> **Status: pre-alpha.** Design only. Nothing is implemented yet; the roadmap below is the plan of record.
+> **Status: pre-alpha.** Milestone 1 is in the tree — the plugin loads and registers one tool that
+> answers `not_implemented`. Milestone 2 wires Pi. The roadmap below is the plan of record.
 
 ## Table of contents
 
@@ -39,8 +40,9 @@ it did, and leave no process or session behind.
 - **One tool, `pi`.** The profile gets a single capability; the coding is Pi's, not the profile model's.
 - **Works wherever a profile works.** Delegation by profile route, a kanban assignee, or a profile opened by
   hand — the same tool, the same behaviour.
-- **A covered RPC session.** Framing, id correlation, completion by `agent_settled`, dialog requests answered,
-  cancellation that kills the process, stderr kept for the error message.
+- **A covered RPC session.** Framing by line, id correlation, completion by `agent_settled`, cancellation that
+  kills the process, stderr kept for the error message. A dialog request never stalls a run: Pi has no
+  ask-the-user tool and runs unattended, so anything that does ask is answered `cancelled`.
 - **Pi as it is.** codemode, provider, model and credentials stay Pi's own settings; the plugin adds nothing
   Pi would have to be reconfigured for.
 - **No litter.** Runs carry `--no-session`, so the user's Pi history stays theirs.
@@ -186,7 +188,7 @@ Milestones are ordered; each one is shippable on its own.
 | # | Milestone | Ships | Open question |
 |---|---|---|---|
 | 0 | Repository | README, `AGENTS.md`, MIT, this roadmap | — |
-| 1 | Plugin skeleton | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Does a plugin toolset survive `platform_toolsets` narrowing in a profile clone? |
+| 1 | Plugin skeleton ✅ | `plugin.yaml`, `register(ctx)` registering one tool in its own toolset, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Does a plugin toolset survive `platform_toolsets` narrowing in a profile clone? |
 | 2 | The `pi` tool end to end | `pi --mode rpc --no-session` in the working directory: one prompt in, final text out, error paths named | Does `agent_settled` arrive for a prompt that does nothing, and what does a rejected prompt look like? |
 | 3 | RPC hardened | Framing by LF only, id correlation, `extension_ui_request` answered `cancelled`, abort on interrupt, stderr tail in errors, process tree killed on timeout | Where does Pi's output get too large to return, and what is a useful truncation? |
 | 4 | Profile wiring | The documented recipe: cloned profile, `advanced-delegation` profile route, `platform_toolsets` narrowed to the `pi` toolset, kanban assignee | Child toolsets come from the calling profile, not the target profile — does the tool still reach a delegated child? |

@@ -1,0 +1,23 @@
+name: hexpi
+version: 0.1.0
+description: "Run the Pi coding agent from a Hermes profile: one tool, one prompt, one result."
+author: vvoxa
+manifest_version: 1
+kind: standalone
+label: Pi coding agent
+license: MIT
+homepage: "https://github.com/vvoxa/hexpi"
+tags: [coding, pi, subagent]
+platforms:
+  - linux
+  - macos
+requires_hermes: ">=0.23.0"
+provides_tools: [pi]
+provides_hooks: []
+config_schema:
+  timeout_s:
+    type: int
+    default: 3600
+    label: Run timeout (seconds)
+    description: >-
+      How long one pi run may take before its process tree is killed.
