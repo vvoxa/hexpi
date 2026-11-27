@@ -129,29 +129,30 @@ the dispatcher's job and needs nothing from this plugin.
 ### Make the review lane mandatory
 
 A worker decides how its card ends, and `kanban_complete` ends it without a review. Nothing in the board
-configuration forbids that, so the gate is a `pre_tool_call` hook, wired once in the **implementer** profile
-(`coder`), never in the reviewing one:
+configuration forbids that, so the gate is a `pre_tool_call` hook, once, in the profile whose workers carry
+cards:
 
 ```bash
-hermes -p coder config set hooks.pre_tool_call '[{"matcher":"kanban_(complete|request_review)","command":"<repo>/hooks/kanban-review-gate.py","timeout":10}]'
-hermes hooks test pre_tool_call --for-tool kanban_complete      # expect action: block
+hermes config set hooks.pre_tool_call '[{"matcher":"kanban_(complete|request_review)","command":"<repo>/hooks/kanban-review-gate.py","timeout":10}]'
+hermes hooks test pre_tool_call --for-tool kanban_complete        # expect action: block
 hermes hooks test pre_tool_call --for-tool kanban_request_review  # expect action: modify, reviewer=default
 ```
 
-The hook does two things. It blocks `kanban_complete` with a message that names the way out, so a card cannot
-be closed by the agent that wrote it. And when `kanban_request_review` arrives without a `reviewer`, it fills
-in `default` — which reassigns the card, so the review lane spawns the profile that can actually read the diff,
-run the tests and hold the memory. `kanban_block` and every other call pass through untouched.
+The hook does two things. It blocks `kanban_complete` for an implementation run, with a message that names the
+way out, so a card cannot be closed by the agent that wrote it. And when `kanban_request_review` arrives
+without a `reviewer`, it fills in `default` — which reassigns the card, so the review lane spawns the profile
+that can actually read the diff, run the tests and hold the memory. `kanban_block` and every other call pass
+through untouched.
 
-**Wire it in exactly one profile.** A gate in the reviewing profile blocks the reviewer's own
-`kanban_complete` too, and the card can then only escape through `kanban_block` — which is what a probe run
-did before this was pinned down.
+**A review run is recognised by its own claim, not by its profile.** The gate reads the card's
+`current_run_id` and that run's `claimed` event from the board database; `source_status: "review"` means the
+run came out of the review lane and is allowed to close the card. That is what lets the gate work on a board
+with a single profile installed — a probe run there was refused its `kanban_complete` and handed the card over,
+after which the review run completed it.
 
-The gate is checked live rather than assumed: the block refusal reached a real worker's `kanban_complete`, and
-`request_review` without a reviewer left `{"implementer": "default", "reviewer": "default"}` on the event and
-`review` as the card's status. A hook needs consent before it fires — approve it at the terminal once, set
-`hooks_auto_accept: true`, or run the gateway with `--accept-hooks`; an unapproved hook is skipped with a
-warning in the log, which is the one way this gate silently does nothing.
+A hook needs consent before it fires: approve it at the terminal once (or `hooks_auto_accept: true`, or
+`--accept-hooks`). Until then every call is skipped with a warning in the log — the one way this gate silently
+does nothing. The gateway picks a newly approved hook up within about 30 seconds, no restart needed.
 
 ## Configuration
 
