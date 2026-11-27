@@ -185,12 +185,18 @@ Research notes for these questions and the implementation plans live in the vaul
 ## Development
 
 ```
-plugin/hexpi/            the plugin: plugin.yaml, __init__.py with register(ctx), the pi tool
-tests/                   plain-assert self-check, no framework, no network
-docs/releases.md         how a version, a changelog and a tag come out of commit messages
-pyproject.toml           ruff: the whole style guide, nothing to discuss in review
-.gitconfig .editorconfig settings both the repo and the editor enforce
+plugin.yaml   __init__.py     the plugin Hermes loads: register(ctx) and nothing else
+pi_tool.py                    the tool schema and its handler
+pi_rpc.py                     the RPC client: framing, ids, completion, cancellation
+tests/                        plain-assert self-check, no framework, no network
+docs/releases.md              how a version, a changelog and a tag come out of commit messages
+docs/style.md                 why these ruff rules, and which ones are deliberately off
+pyproject.toml                ruff: the whole style guide, nothing to discuss in review
+.gitconfig .editorconfig      settings both the repo and the editor enforce
 ```
+
+The repository root **is** the plugin directory, so `hermes plugins install vvoxa/hexpi` works with no
+subdirectory fragment.
 
 The plugin is Python — the standard library only — because the Hermes plugin API is Python and a second
 runtime would buy nothing. Tests are plain asserts run by a script, with no framework and no network:

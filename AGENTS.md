@@ -20,8 +20,8 @@ Pi and Hermes are dependencies we do not modify.
 
 ## Verification
 
-- `hermes plugins validate plugin/hexpi` and `hermes plugins doctor plugin/hexpi --ci` must pass; validate runs
-  `register()` in a stripped host, so keep module import side-effect free.
+- `hermes plugins validate .` and `hermes plugins doctor . --ci` must pass; validate runs `register()` in a
+  stripped host, so keep module import side-effect free.
 - Tests are hermetic: plain asserts in `tests/`, run by `python3 tests/selfcheck.py`, no framework, no network,
   no real `pi` binary, no live provider. Stub the subprocess, assert on the argv it would have been started with
   and on the JSONL records exchanged — that is where the contract lives.
