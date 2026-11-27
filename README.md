@@ -119,6 +119,18 @@ Four moving parts, each one a research question until it is proven:
 Deliberately **not** in scope: vendoring or forking Pi, writing into the user's `~/.pi`, running Pi on another
 machine (that is a transport problem, not a plugin's), and re-implementing ACP.
 
+### Design decisions
+
+| Decision | Reason |
+|---|---|
+| Pi is driven in **RPC mode** (`pi --mode rpc`) | JSONL records with ids, a real completion signal (`agent_settled`), runtime model/effort switching, cancellation that reaches the process |
+| Pi runs with its **own** `PI_CODING_AGENT_DIR` | the user's `~/.pi` stays theirs; sessions and packages do not mix |
+| Settings reach Pi as **arguments and files in that home** | no `pi auth login`, no editing Pi's settings by hand |
+| The plugin is **Python, standard library only** | the Hermes plugin API is Python; a second runtime buys nothing |
+| No core patch | if the task needs Pi to *be* the worker and no plugin seam expresses that, that is a decision to revisit, not to fork around |
+
+Cancel is `abort` and waits for the session to go idle; `clear_queue` returns the messages an abort displaced.
+
 ## Roadmap
 
 Milestones are ordered; each one is shippable on its own.
@@ -128,7 +140,7 @@ Milestones are ordered; each one is shippable on its own.
 | 0 | Repository | README, `AGENTS.md`, MIT, this roadmap | — |
 | 1 | Plugin skeleton | `plugin.yaml`, `register(ctx)`, `config_schema`, `hermes plugins validate` and `doctor --ci` green | Which manifest capabilities does the delegation seam need to declare? |
 | 2 | Pi runtime | Resolve `pi` from `PATH` or install it; isolated `PI_CODING_AGENT_DIR`; `hermes hexpi doctor` reporting version, home, provider | Which install path is authoritative — the shell installer or npm? Both must be supported; which one is default? |
-| 3 | Pi as the subagent | RPC subprocess: prompt → events → result; cancellation, timeouts, exit codes, the diff left in the tree | Does the delegation backend alone make Pi the worker, or does the child have to be a profile whose route reaches Pi? |
+| 3 | Pi as the subagent | RPC subprocess: prompt → events → result; cancellation, timeouts, exit codes, the diff left in the tree | Decided: the transport is Pi's RPC mode. Still open: which Hermes seam hands Pi the task — a delegation backend returns a route only and cannot start a process (see the vault note). |
 | 4 | Profile description | `hexpi` appears as its own subagent with a coding description and its own route in desktop settings and CLI; ephemeral, no state kept | How much of the route vocabulary (model, provider, effort) can be passed through without Hermes overriding it? |
 | 5 | Model and effort | `provider`, `model`, `thinking` mapped onto `--provider`, `--model`, `--thinking`; credentials handed to Pi per run | Where do Pi's env-var credentials come from — Hermes' provider config, `.env`, or a per-run injection? |
 | 6 | Forced codemode | `codemode: true` → `--tools +codemode` on every run, independently of Pi's own `settings.json` | Do `--tools` and the isolated `defaultTools` agree, or does one silently win? |
